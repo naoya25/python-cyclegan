@@ -6,7 +6,7 @@ from PIL import Image
 import numpy as np
 
 
-save_path = "./models"
+save_path = "./models/saved_model"
 loaded_model = tf.saved_model.load(save_path)
 
 

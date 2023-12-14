@@ -20,38 +20,6 @@ LAMBDA = 10
 EPOCHS = 1  # 俺のpcやと10時間かかった
 
 
-def random_crop(image):
-    cropped_image = tf.image.random_crop(image, size=[IMG_HEIGHT, IMG_WIDTH, 3])
-
-    return cropped_image
-
-
-def normalize(image):
-    image = tf.cast(image, tf.float32)
-    image = (image / 127.5) - 1
-    return image
-
-
-def random_jitter(image):
-    image = tf.image.resize(
-        image, [286, 286], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR
-    )  # resizing to 286 x 286 x 3
-    image = random_crop(image)  # randomly cropping to 256 x 256 x 3
-    image = tf.image.random_flip_left_right(image)  # random mirroring
-    return image
-
-
-def preprocess_image_train(image, label):
-    image = random_jitter(image)
-    image = normalize(image)
-    return image
-
-
-def preprocess_image_test(image, label):
-    image = normalize(image)
-    return image
-
-
 # データのパスをここで指定します。
 data_root = pathlib.Path("./dataset")
 train_x_paths = list(data_root.glob("trainA/*"))
@@ -60,14 +28,16 @@ train_x_paths = [str(path) for path in train_x_paths][:100]
 train_y_paths = list(data_root.glob("trainB/*"))
 train_y_paths = [str(path) for path in train_y_paths][:100]
 
-test_x_paths = list(data_root.glob("testA/*"))
-test_x_paths = [str(path) for path in test_x_paths][:100]
 
-test_y_paths = list(data_root.glob("testB/*"))
-test_y_paths = [str(path) for path in test_y_paths][:100]
+# arrayからtensorへ変換します
+train_x = tf.data.Dataset.from_tensor_slices(train_x_paths)
+train_y = tf.data.Dataset.from_tensor_slices(train_y_paths)
+
+# 各データの出力数を変数に格納します
+len_train_x = len(train_x)
+len_train_y = len(train_y)
 
 
-# 訓練用の写真をクロッピング、左右反転、正規化するための関数
 def preprocess_image_train(path):
     image = tf.io.read_file(path)
     # 生データのテンソルを画像のテンソルに変換する。
@@ -103,18 +73,6 @@ def preprocess_image_test(path):
     return image
 
 
-# arrayからtensorへ変換します
-train_x = tf.data.Dataset.from_tensor_slices(train_x_paths)
-train_y = tf.data.Dataset.from_tensor_slices(train_y_paths)
-test_x = tf.data.Dataset.from_tensor_slices(test_x_paths)
-test_y = tf.data.Dataset.from_tensor_slices(test_y_paths)
-
-# 各データの出力数を変数に格納します
-len_train_x = len(train_x)
-len_train_y = len(train_y)
-len_test_x = len(test_x)
-len_test_y = len(test_y)
-
 # 画像のパスから画像データをtensorとして取り出し、前処理、バッチ化を行います。
 train_x = (
     train_x.map(preprocess_image_train, num_parallel_calls=AUTOTUNE)
@@ -127,20 +85,6 @@ train_y = (
     train_y.map(preprocess_image_train, num_parallel_calls=AUTOTUNE)
     .cache()
     .shuffle(len_train_y)
-    .batch(1)
-)
-
-test_x = (
-    test_x.map(preprocess_image_test, num_parallel_calls=AUTOTUNE)
-    .cache()
-    .shuffle(len_test_x)
-    .batch(1)
-)
-
-test_y = (
-    test_y.map(preprocess_image_test, num_parallel_calls=AUTOTUNE)
-    .cache()
-    .shuffle(len_test_y)
     .batch(1)
 )
 
@@ -201,10 +145,6 @@ ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
 if ckpt_manager.latest_checkpoint:
     ckpt.restore(ckpt_manager.latest_checkpoint)
     print("Latest checkpoint restored!!")
-
-
-def generate_images(model, test_input):
-    prediction = model(test_input)
 
 
 @tf.function
@@ -286,10 +226,6 @@ for epoch in range(EPOCHS):
         print("Saving checkpoint for epoch {} at {}".format(epoch + 1, ckpt_save_path))
 
     print("Time taken for epoch {} is {} sec\n".format(epoch + 1, time.time() - start))
-
-
-for inp in test_x.take(5):
-    generate_images(generator_g, inp)
 
 
 # モデルの保存
