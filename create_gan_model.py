@@ -1,7 +1,6 @@
 # pcのスペックによっては実行が終わりませんwwwwwww
 # 10時間以上かかる場合もあります
 
-
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from examples.tensorflow_examples.models.pix2pix import pix2pix
@@ -17,7 +16,7 @@ IMG_WIDTH = 256
 IMG_HEIGHT = 256
 OUTPUT_CHANNELS = 3
 LAMBDA = 10
-EPOCHS = 1  # 俺のpcやと10時間かかった
+EPOCHS = 10  # 俺のpcやと10時間かかった
 
 
 # データのパスをここで指定します。
